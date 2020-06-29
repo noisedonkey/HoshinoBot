@@ -14,7 +14,7 @@ from hoshino import aiorequests
 from hoshino.res import R
 from hoshino.service import Service
 
-sv = Service('pcr-comic')
+sv = Service('pcr-comic', enable_on_default=False, visible=False)
 
 def load_index():
     with open(R.get('img/priconne/comic/index.json').path, encoding='utf8') as f:

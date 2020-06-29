@@ -2,9 +2,10 @@ import os
 import base64
 
 from io import BytesIO
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 import zhconv
+import requests
 
 from .priconne_data import _PriconneData
 from hoshino.log import logger
@@ -30,6 +31,25 @@ def gen_name2id():
                 NAME2ID[normname(s)] = k
             else:
                 logger.warning(f'Chara.__gen_name2id: 出现重名{s}于id{k}与id{NAME2ID[s]}')
+
+
+def download_chara_icon(id_, star):
+    url = f'https://redive.estertion.win/icon/unit/{id_}{star}1.webp'
+    save_path = R.img(f'priconne/unit/icon_unit_{id_}{star}1.png').path
+    rsp = None
+    logger.info(f'Downloading chara icon from {url}')
+    try:
+        rsp = requests.get(url, stream=True, timeout=5)
+    except Exception as e:
+        logger.error(f'Failed to download {url}. {type(e)}')
+        logger.exception(e)
+        return
+    if 200 == rsp.status_code:
+        img = Image.open(BytesIO(rsp.content))
+        img.save(save_path)
+        logger.info(f'Saved to {save_path}')
+    else:
+        logger.error(f'Failed to download {url}. HTTP {rsp.status_code}')
 
 
 def normname(name:str) -> str:
@@ -73,10 +93,18 @@ class Chara:
             res = R.img(f'priconne/unit/icon_unit_{self.id}31.png')
         if not res.exist:
             res = R.img(f'priconne/unit/icon_unit_{self.id}11.png')
+        if not res.exist:   # FIXME: 不方便改成异步请求
+            download_chara_icon(self.id, 6)
+            download_chara_icon(self.id, 3)
+            download_chara_icon(self.id, 1)
+            res = R.img(f'priconne/unit/icon_unit_{self.id}{star}1.png')
+        if not res.exist:
+            res = R.img(f'priconne/unit/icon_unit_{self.id}31.png')
+        if not res.exist:
+            res = R.img(f'priconne/unit/icon_unit_{self.id}11.png')
         if not res.exist:
             res = R.img(f'priconne/unit/icon_unit_{Chara.UNKNOWN}31.png')
-        return res
-
+        return res        
 
     def gen_icon_img(self, size, star_slot_verbose=True) -> Image:
         try:
@@ -112,12 +140,16 @@ class Chara:
 
 
     @staticmethod
-    def gen_team_pic(team, size=64, star_slot_verbose=True):
+    def gen_team_pic(team, size=64, star_slot_verbose=True, extra=None):
         num = len(team)
-        des = Image.new('RGBA', (num*size, size), (255, 255, 255, 255))
+        des = Image.new('RGBA', ((num + 3 * bool(extra))*size, size), (255, 255, 255, 255))
         for i, chara in enumerate(team):
             src = chara.gen_icon_img(size, star_slot_verbose)
-            des.paste(src, (i * size, 0), src)
+            des.paste(src, (i * size + 16 * (i >= 5), 0), src)
+            if extra:
+                draw = ImageDraw.Draw(des)
+                font = ImageFont.truetype("LiberationSerif-Regular.ttf", 16)
+                draw.text((len(team) * size + 16 * (len(team) > 5) + 8, size / 2 - 8), extra, (0, 0, 0), font=font)
         return des
 
 

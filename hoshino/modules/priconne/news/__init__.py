@@ -1,8 +1,8 @@
 from hoshino import Service
 from .spider import *
 
-svtw = Service('pcr-news-tw')
-svbl = Service('pcr-news-bili')
+svtw = Service('pcr-news-tw', enable_on_default=False, visible=False)
+svbl = Service('pcr-news-bili', enable_on_default=False, visible=False)
 
 async def news_poller(spider:BaseSpider, sv:Service, TAG):
     if not spider.item_cache:
